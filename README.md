@@ -60,6 +60,13 @@ Run below command before configure
 $ autoreconf -i --force
 ```
 
-## Donation
-If this project helps you reduce time to develop, you can give me a cup of coffee by clicking the sponsor button on top!
+## support AMB and openssl 1.1.0 
+Run below command before configure
+```bash
+$ export LDFLAGS="-lz -L/amb/prebuild/oss/armv8-a/zlib/usr/lib -L/amb/prebuild/oss/armv8-a/openssl/usr/lib" 
+$ ./configure --host=aarch64-linux-gnu --includedir=/amb/prebuild/oss/armv8-a/openssl/include
+$ make
+$ aarch64-linux-gnu-strip src/adb
+```
+
 
