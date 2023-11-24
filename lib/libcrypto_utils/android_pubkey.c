@@ -81,14 +81,20 @@ bool android_pubkey_decode(const uint8_t* key_buffer, size_t size, RSA** key) {
   // Convert the modulus to big-endian byte order as expected by BN_bin2bn.
   memcpy(modulus_buffer, key_struct->modulus, sizeof(modulus_buffer));
   reverse_bytes(modulus_buffer, sizeof(modulus_buffer));
-  new_key->n = BN_bin2bn(modulus_buffer, sizeof(modulus_buffer), NULL);
-  if (!new_key->n) {
+  //new_key->n = BN_bin2bn(modulus_buffer, sizeof(modulus_buffer), NULL);
+  //if (!new_key->n) {
+  BIGNUM *new_n = BN_bin2bn(modulus_buffer, sizeof(modulus_buffer), NULL);
+  if (!new_n) {
     goto cleanup;
+  } else {
+    RSA_set0_key(new_key, new_n, NULL, NULL);
   }
 
   // Read the exponent.
-  new_key->e = BN_new();
-  if (!new_key->e || !BN_set_word(new_key->e, key_struct->exponent)) {
+  //new_key->e = BN_new();
+  //if (!new_key->e || !BN_set_word(new_key->e, key_struct->exponent)) {
+  BIGNUM *new_e = BN_new();
+  if (!new_e || !BN_set_word(new_e, key_struct->exponent)) {
     goto cleanup;
   }
 
@@ -111,7 +117,8 @@ cleanup:
 }
 
 static bool android_pubkey_encode_bignum(const BIGNUM* num, uint8_t* buffer) {
-  if (!BN_bn2bin_padded(buffer, ANDROID_PUBKEY_MODULUS_SIZE, num)) {
+  //if (!BN_bn2bin_padded(buffer, ANDROID_PUBKEY_MODULUS_SIZE, num)) {
+  if (!BN_bn2binpad(buffer, ANDROID_PUBKEY_MODULUS_SIZE, num)) {
     return false;
   }
 
@@ -134,29 +141,35 @@ bool android_pubkey_encode(const RSA* key, uint8_t* key_buffer, size_t size) {
 
   // Store the modulus size.
   key_struct->modulus_size_words = ANDROID_PUBKEY_MODULUS_SIZE_WORDS;
+  BIGNUM *key_n, *key_e, *key_d;
+  RSA_get0_key(key, &key_n, &key_e, &key_d);
 
   // Compute and store n0inv = -1 / N[0] mod 2^32.
   if (!ctx || !r32 || !n0inv || !BN_set_bit(r32, 32) ||
-      !BN_mod(n0inv, key->n, r32, ctx) ||
+      //!BN_mod(n0inv, key->n, r32, ctx) ||
+      !BN_mod(n0inv, key_n, r32, ctx) ||
       !BN_mod_inverse(n0inv, n0inv, r32, ctx) || !BN_sub(n0inv, r32, n0inv)) {
     goto cleanup;
   }
   key_struct->n0inv = (uint32_t)BN_get_word(n0inv);
 
   // Store the modulus.
-  if (!android_pubkey_encode_bignum(key->n, key_struct->modulus)) {
+  //if (!android_pubkey_encode_bignum(key->n, key_struct->modulus)) {
+  if (!android_pubkey_encode_bignum(key_n, key_struct->modulus)) {
     goto cleanup;
   }
 
   // Compute and store rr = (2^(rsa_size)) ^ 2 mod N.
   if (!ctx || !rr || !BN_set_bit(rr, ANDROID_PUBKEY_MODULUS_SIZE * 8) ||
-      !BN_mod_sqr(rr, rr, key->n, ctx) ||
+      //!BN_mod_sqr(rr, rr, key->n, ctx) ||
+      !BN_mod_sqr(rr, rr, key_n, ctx) ||
       !android_pubkey_encode_bignum(rr, key_struct->rr)) {
     goto cleanup;
   }
 
   // Store the exponent.
-  key_struct->exponent = (uint32_t)BN_get_word(key->e);
+  //key_struct->exponent = (uint32_t)BN_get_word(key->e);
+  key_struct->exponent = (uint32_t)BN_get_word(key_e);
 
   ret = true;
 

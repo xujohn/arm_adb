@@ -82,10 +82,11 @@ static bool write_public_keyfile(RSA* private_key, const std::string& private_ke
     }
 
     size_t expected_length;
-    if (!EVP_EncodedLength(&expected_length, sizeof(binary_key_data))) {
-        LOG(ERROR) << "Public key too large to base64 encode";
-        return false;
-    }
+    expected_length = sizeof(binary_key_data);
+    //if (!EVP_EncodedLength(&expected_length, sizeof(binary_key_data))) {
+    //    LOG(ERROR) << "Public key too large to base64 encode";
+    //    return false;
+    //}
 
     std::string content;
     content.resize(expected_length);
